@@ -1,0 +1,6 @@
+/dist/
+/target/
+/.nvim.lua
+/Cargo.lock
+/rust-analyzer.json
+/rust-toolchain.toml
