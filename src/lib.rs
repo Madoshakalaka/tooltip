@@ -2,54 +2,62 @@ use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    pub stalk_aspect_ratio: f64,
-    pub rx: AttrValue,
-    pub tip_width_ratio: f64,
+    #[prop_or_default]
+    pub classes: Classes,
+    #[prop_or(0.12)]
+    pub border_radius_ratio: f64,
+    #[prop_or(1.0/6.0)]
     pub tip_height_ratio: f64,
-    pub color: AttrValue,
+    #[prop_or(4.0/3.0)]
+    pub tip_aspect_ratio: f64,
+
+    #[prop_or("#676a6f".into())]
+    pub background_color: AttrValue,
     pub height: AttrValue,
+    #[prop_or(0.1)]
     pub control_point_0_ratio: f64,
+    #[prop_or(0.1)]
     pub control_point_1_ratio: f64,
-    pub font_size_to_width: f64,
+    #[prop_or(0.31)]
+    pub font_height_ratio: f64,
+
+    #[prop_or("#ffffff".into())]
     pub text_color: AttrValue,
-    pub letter_spacing_ratio: f64,
     pub text: AttrValue,
 }
 
 #[function_component]
 pub fn Tooltip(props: &Props) -> Html {
-    // suppose the width is 1
-    // we want the whole width over height
-    // the width of the tip is 1 * tip_width_ratio
-    // the whole width is 1 + 1 * tip_width_ratio = 1 + tip_width_ratio
-    // the height is 1 / stalk_aspect_ratio
-    // the ratio then becomes (1 + tip_width_ratio) / (1 / stalk_aspect_ratio) = (1 +
-    // tip_width_ratio) * stalk_aspect_ratio
-    let aspect_ratio = (1.0 + props.tip_width_ratio) * props.stalk_aspect_ratio;
-
-    let style = format!("height: {}; aspect-ratio: {};", props.height, aspect_ratio);
-
     let v_height = 100f64;
-    let v_width = v_height * aspect_ratio;
+    let font_size = props.font_height_ratio * v_height;
+
+    // estimate the width of the text:
+    // assuming the width of the text is equal to its height
+    // (seems to be the case for uppercase letters)
+    let padding_inline_sum = v_height * (1.0 - props.font_height_ratio);
+    let stalk_width = props.text.len() as f64 * font_size + padding_inline_sum;
+
+    let style = format!("height: {};", props.height);
+
+    let tip_height = v_height * props.tip_height_ratio;
+    let tip_width = tip_height * props.tip_aspect_ratio;
+
+    let v_width = stalk_width + tip_width;
     let view_box = format!("0 0 {} {}", v_width + 1.0, v_height);
 
-    let stalk_width = v_width * (1.0 / (1.0 + props.tip_width_ratio));
-    let tip_width = v_width - stalk_width;
-    let stalk_height = stalk_width / props.stalk_aspect_ratio;
-
     let touch_point_x = tip_width;
-    let upper_touch_point_y = (1.0 - props.tip_height_ratio) * stalk_height / 2.0;
-    let lower_touch_point_y = (0.5 + props.tip_height_ratio / 2.0) * stalk_height;
+    let upper_touch_point_y = (1.0 - props.tip_height_ratio) * v_height / 2.0;
+    let lower_touch_point_y = (0.5 + props.tip_height_ratio / 2.0) * v_height;
 
     let control_point_0_x = tip_width * props.control_point_0_ratio;
-    let tip_height = stalk_height * props.tip_height_ratio;
+    let tip_height = v_height * props.tip_height_ratio;
     let control_point_1_size = tip_height * props.control_point_1_ratio;
 
     let d = format!(
         "M 0 {} C {} {}, {} {}, {} {} h 2 v {} h -2 C {} {}, {} {}, {} {}",
-        stalk_height / 2.0,
+        v_height / 2.0,
         control_point_0_x,
-        stalk_height / 2.0,
+        v_height / 2.0,
         touch_point_x,
         upper_touch_point_y + control_point_1_size,
         touch_point_x,
@@ -58,34 +66,33 @@ pub fn Tooltip(props: &Props) -> Html {
         touch_point_x,
         lower_touch_point_y - control_point_1_size,
         control_point_0_x,
-        stalk_height / 2.0,
+        v_height / 2.0,
         0,
-        stalk_height / 2.0,
+        v_height / 2.0,
     );
 
     html! {
-        <svg viewBox={view_box} {style}>
+        <svg viewBox={view_box} {style} class={props.classes.clone()}>
             <rect
                 x={tip_width.to_string()}
                 width={stalk_width.to_string()}
-                height={stalk_height.to_string()}
-                rx={props.rx.clone()}
-                fill={props.color.clone()}
+                height={v_height.to_string()}
+                rx={( props.border_radius_ratio * v_height ).to_string()}
+                fill={props.background_color.clone()}
             />
             <text
                 x={(tip_width + stalk_width / 2.0).to_string()}
-                y={(stalk_height / 2.0).to_string()}
+                y={(v_height / 2.0).to_string()}
                 text-anchor="middle"
                 dominant-baseline="central"
                 fill={props.text_color.clone()}
-                font-size={(props.font_size_to_width * stalk_width).to_string()}
+                font-size={font_size.to_string()}
                 // sans-serif
                 font-family="Arial"
-                letter-spacing={(props.letter_spacing_ratio * stalk_width).to_string()}
             >
                 { props.text.clone() }
             </text>
-            <path {d} fill={props.color.clone()} />
+            <path {d} fill={props.background_color.clone()} />
         </svg>
     }
 }

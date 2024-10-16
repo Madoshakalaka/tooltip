@@ -32,21 +32,20 @@ pub fn MockButton() -> Html {
 
 #[function_component]
 pub fn App() -> Html {
-    let letter_spacing = use_state(|| 0.01);
-    let stalk_aspect_ratio = use_state(|| 2.0);
-    let height_percentage = use_state(|| 0.8);
-    let border_radius = use_state(|| 0.1);
+    let height_percentage = use_state(|| 0.69); // nice
+    let border_radius = use_state(|| 0.12);
     // initial is pure blue
-    let color = use_state(|| "#007bff".to_string());
+    let background_color = use_state(|| "#676a6f".to_string());
 
-    let tip_width_ratio = use_state(|| 0.07);
-    let tip_height_ratio = use_state(|| 0.2);
+    let tip_height_ratio = use_state(|| 1.0/6.0);
+    let tip_aspect_ratio = use_state(|| 4.0/3.0);
 
-    let tip_pointness = use_state(|| 0.2);
-    let contact_convergence = use_state(|| 0.2);
+    let tip_pointness = use_state(|| 0.1);
+    let contact_convergence = use_state(|| 0.1);
 
-    let font_size = use_state(|| 0.3);
+    let font_height_ratio = use_state(|| 0.31);
     let text_color = use_state(|| "#ffffff".to_string());
+    let text = use_state(|| AttrValue::from("ADD"));
 
     html! {
         <>
@@ -61,18 +60,16 @@ pub fn App() -> Html {
             >
                 <MockButton />
                 <Tooltip
-                    stalk_aspect_ratio={*stalk_aspect_ratio}
-                    rx={format!("{}%", *border_radius * 100.0)}
-                    tip_width_ratio={*tip_width_ratio}
+                    border_radius_ratio={*border_radius}
                     tip_height_ratio={*tip_height_ratio}
-                    color={AttrValue::from(( *color ).clone())}
+                    tip_aspect_ratio={*tip_aspect_ratio}
+                    background_color={AttrValue::from(( *background_color ).clone())}
                     height={format!("{}px", *height_percentage * BUTTON_SIZE)}
                     control_point_0_ratio={*tip_pointness}
                     control_point_1_ratio={*contact_convergence}
-                    font_size_to_width={*font_size}
+                    font_height_ratio={*font_height_ratio}
                     text_color={AttrValue::from(( *text_color ).clone())}
-                    letter_spacing_ratio={*letter_spacing}
-                    text={"ADD"}
+                    text={(*text).clone()}
                 />
             </div>
             <div
@@ -102,28 +99,13 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
-                    { format!{"Aspect Ratio: {:.2}", *stalk_aspect_ratio} }
-                    <br />
-                    <input
-                        type="range"
-                        value={stalk_aspect_ratio.to_string()}
-                        min=1.0
-                        max=3.0
-                        step=0.01
-                        oninput={move |e: InputEvent| {
-                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
-                            stalk_aspect_ratio.set(target.value_as_number());
-                    }}
-                    />
-                </label>
-                <label>
                     { format!{"Border Radius: {:.2}%", *border_radius * 100.0} }
                     <br />
                     <input
                         type="range"
                         value={border_radius.to_string()}
                         min=0.05
-                        max=0.25
+                        max=0.20
                         step=0.005
                         oninput={move |e: InputEvent| {
                             let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
@@ -132,22 +114,7 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
-                    { format!("Tip Width to Body: {:.2}% ", *tip_width_ratio * 100.0) }
-                    <br />
-                    <input
-                        type="range"
-                        value={tip_width_ratio.to_string()}
-                        min=0.05
-                        max=0.2
-                        step=0.005
-                        oninput={move |e: InputEvent| {
-                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
-                            tip_width_ratio.set(target.value_as_number());
-                    }}
-                    />
-                </label>
-                <label>
-                    { format!("Tip Height to Body: {:.2}% ", *tip_height_ratio * 100.0) }
+                    { format!("Tip Height Ratio: {:.2}% ", *tip_height_ratio * 100.0) }
                     <br />
                     <input
                         type="range"
@@ -162,14 +129,29 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
+                  { format!("Tip Aspect Ratio: {:.2}", *tip_aspect_ratio) }
+                    <br />
+                    <input
+                        type="range"
+                        value={tip_aspect_ratio.to_string()}
+                        min=0.2
+                        max=3.0
+                        step=0.01
+                        oninput={move |e: InputEvent| {
+                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
+                            tip_aspect_ratio.set(target.value_as_number());
+                    }}
+                    />
+                </label>
+                <label>
                     { format!("Tip Pointness A: {:.2}% ", *tip_pointness * 100.0) }
                     <br />
                     <input
                         type="range"
                         value={tip_pointness.to_string()}
-                        min=0.1
-                        max=0.5
-                        step=0.01
+                        min=0.001
+                        max=0.3
+                        step=0.001
                         oninput={move |e: InputEvent| {
                             let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
                             tip_pointness.set(target.value_as_number());
@@ -182,9 +164,9 @@ pub fn App() -> Html {
                     <input
                         type="range"
                         value={contact_convergence.to_string()}
-                        min=0.1
-                        max=0.5
-                        step=0.01
+                        min=0.001
+                        max=0.3
+                        step=0.001
                         oninput={move |e: InputEvent| {
                             let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
                             contact_convergence.set(target.value_as_number());
@@ -192,45 +174,30 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
-                    { format!("Font Size to Width: {:.2}% ", *font_size * 100.0) }
+                    { format!("Font Height Ratio: {:.2}% ", *font_height_ratio * 100.0) }
                     <br />
                     <input
                         type="range"
-                        value={font_size.to_string()}
+                        value={font_height_ratio.to_string()}
                         min=0.1
-                        max=0.5
+                        max=0.8
                         step=0.01
                         oninput={move |e: InputEvent| {
                             let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
-                            font_size.set(target.value_as_number());
+                            font_height_ratio.set(target.value_as_number());
                     }}
                     />
                 </label>
 
                 <label>
-                  { format!("Letter Spacing: {:.2}%", *letter_spacing * 100.0) }
-                    <br />
-                    <input
-                        type="range"
-                        value={letter_spacing.to_string()}
-                        min=0
-                        max=0.05
-                        step=0.0001
-                        oninput={move |e: InputEvent| {
-                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
-                            letter_spacing.set(target.value_as_number());
-                    }}
-                    />
-                </label>
-                <label>
-                    { format!{"Backgroud Color: {}", *color} }
+                    { format!{"Backgroud Color: {}", *background_color} }
                     <br />
                     <input
                         type="color"
-                        value={color.to_string()}
+                        value={background_color.to_string()}
                         oninput={move |e: InputEvent| {
                             let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
-                            color.set(target.value());
+                            background_color.set(target.value());
                     }}
                     />
                 </label>
@@ -246,6 +213,19 @@ pub fn App() -> Html {
                     }}
                     />
                 </label>
+                <label>
+                    { format!{"Text: {}", *text} }
+                    <br />
+                    <input
+                        type="text"
+                        value={text.to_string()}
+                        oninput={move |e: InputEvent| {
+                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
+                            text.set(AttrValue::from(target.value()));
+                    }}
+                    />
+                </label>
+
             </div>
         </>
     }
