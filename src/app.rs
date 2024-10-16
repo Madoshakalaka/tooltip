@@ -72,6 +72,7 @@ pub fn App() -> Html {
                     font_size_to_width={*font_size}
                     text_color={AttrValue::from(( *text_color ).clone())}
                     letter_spacing_ratio={*letter_spacing}
+                    text={"ADD"}
                 />
             </div>
             <div

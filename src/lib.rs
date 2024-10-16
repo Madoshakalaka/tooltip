@@ -3,7 +3,6 @@ use yew::prelude::*;
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub stalk_aspect_ratio: f64,
-    // ratio to width
     pub rx: AttrValue,
     pub tip_width_ratio: f64,
     pub tip_height_ratio: f64,
@@ -14,6 +13,7 @@ pub struct Props {
     pub font_size_to_width: f64,
     pub text_color: AttrValue,
     pub letter_spacing_ratio: f64,
+    pub text: AttrValue,
 }
 
 #[function_component]
@@ -31,13 +31,13 @@ pub fn Tooltip(props: &Props) -> Html {
 
     let v_height = 100f64;
     let v_width = v_height * aspect_ratio;
-    let view_box = format!("0 0 {} {}", v_width, v_height);
+    let view_box = format!("0 0 {} {}", v_width + 1.0, v_height);
 
     let stalk_width = v_width * (1.0 / (1.0 + props.tip_width_ratio));
     let tip_width = v_width - stalk_width;
     let stalk_height = stalk_width / props.stalk_aspect_ratio;
 
-    let touch_point_x = tip_width + 1.0;
+    let touch_point_x = tip_width;
     let upper_touch_point_y = (1.0 - props.tip_height_ratio) * stalk_height / 2.0;
     let lower_touch_point_y = (0.5 + props.tip_height_ratio / 2.0) * stalk_height;
 
@@ -46,18 +46,15 @@ pub fn Tooltip(props: &Props) -> Html {
     let control_point_1_size = tip_height * props.control_point_1_ratio;
 
     let d = format!(
-        "M 0 {} C {} {}, {} {}, {} {} v {} C {} {}, {} {}, {} {}",
+        "M 0 {} C {} {}, {} {}, {} {} h 2 v {} h -2 C {} {}, {} {}, {} {}",
         stalk_height / 2.0,
-
         control_point_0_x,
         stalk_height / 2.0,
         touch_point_x,
         upper_touch_point_y + control_point_1_size,
         touch_point_x,
         upper_touch_point_y,
-
         tip_height,
-
         touch_point_x,
         lower_touch_point_y - control_point_1_size,
         control_point_0_x,
@@ -74,8 +71,7 @@ pub fn Tooltip(props: &Props) -> Html {
                 height={stalk_height.to_string()}
                 rx={props.rx.clone()}
                 fill={props.color.clone()}
-            >
-            </rect>
+            />
             <text
                 x={(tip_width + stalk_width / 2.0).to_string()}
                 y={(stalk_height / 2.0).to_string()}
@@ -87,7 +83,7 @@ pub fn Tooltip(props: &Props) -> Html {
                 font-family="Arial"
                 letter-spacing={(props.letter_spacing_ratio * stalk_width).to_string()}
             >
-                {"ADD"}
+                { props.text.clone() }
             </text>
             <path {d} fill={props.color.clone()} />
         </svg>
