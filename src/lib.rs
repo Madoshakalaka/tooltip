@@ -140,14 +140,9 @@ pub fn Tooltip(props: &Props) -> Html {
     let v_height = 100f64;
     let font_size = props.font_height_ratio * v_height;
 
-    // estimate the width of the text:
-    // assuming the width of the text is equal to its height
-    // (seems to be the case for uppercase letters)
-    // assuming spaces have half the width
     let padding_inline_sum = v_height * (1.0 - props.font_height_ratio) * props.inline_padding;
 
-    let stalk_width =
-        padding_inline_sum + calculate_text_width(&props.text, font_size);
+    let stalk_width = padding_inline_sum + calculate_text_width(&props.text, font_size);
 
     let style = format!("height: {};", props.height);
 
