@@ -48,6 +48,7 @@ pub fn App() -> Html {
     let text = use_state(|| AttrValue::from("ADD"));
 
     let inline_padding = use_state(|| 1.0);
+    let mirror = use_state(|| false);
 
     html! {
         <>
@@ -73,6 +74,7 @@ pub fn App() -> Html {
                     font_height_ratio={*font_height_ratio}
                     text_color={AttrValue::from(( *text_color ).clone())}
                     text={(*text).clone()}
+                    mirror={*mirror}
                 />
             </div>
             <div
@@ -242,6 +244,19 @@ pub fn App() -> Html {
                     }}
                     />
                 </label>
+                // checkbox for mirror
+                <label>
+                    { "Mirror: " }
+                    <br />
+                    <input
+                        type="checkbox"
+                        checked={*mirror}
+                        onclick={move |_| {
+                            mirror.set(!*mirror);
+                    }}
+                    />
+                </label>
+
             </div>
         </>
     }

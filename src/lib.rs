@@ -133,6 +133,8 @@ pub struct Props {
     #[prop_or("#ffffff".into())]
     pub text_color: AttrValue,
     pub text: AttrValue,
+    #[prop_or(false)]
+    pub mirror: bool,
 }
 
 #[function_component]
@@ -181,14 +183,14 @@ pub fn Tooltip(props: &Props) -> Html {
     html! {
         <svg viewBox={view_box} {style} class={props.classes.clone()}>
             <rect
-                x={tip_width.to_string()}
+                x={if !props.mirror {tip_width.to_string()} else {0.0.to_string()}}
                 width={stalk_width.to_string()}
                 height={v_height.to_string()}
                 rx={( props.border_radius_ratio * v_height ).to_string()}
                 fill={props.background_color.clone()}
             />
             <text
-                x={(tip_width + stalk_width / 2.0).to_string()}
+                x={if !props.mirror {(tip_width + stalk_width / 2.0).to_string()}else{(stalk_width / 2.0).to_string()}}
                 y={(v_height / 2.0).to_string()}
                 text-anchor="middle"
                 dominant-baseline="central"
@@ -199,7 +201,11 @@ pub fn Tooltip(props: &Props) -> Html {
             >
                 { props.text.clone() }
             </text>
-            <path {d} fill={props.background_color.clone()} />
+            <path
+                {d}
+                fill={props.background_color.clone()}
+                transform={props.mirror.then_some( format!("scale(-1, 1) translate({}, 0)", -1.0 * tip_width - stalk_width) )}
+            />
         </svg>
     }
 }
