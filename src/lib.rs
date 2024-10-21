@@ -1,5 +1,112 @@
 use yew::prelude::*;
 
+/// https://gist.github.com/aminnj/5ca372aa2def72fb017b531c894afdca
+fn calculate_text_width(text: &str, font_size: f64) -> f64 {
+    let char_height = 13.328125; // M is close to a square
+
+    text.chars().fold(0.0, |acc, c| {
+        let char_width = match c {
+            ' ' => 4.4453125,
+            '!' => 4.4453125,
+            '"' => 5.6796875,
+            '#' => 8.8984375,
+            '$' => 8.8984375,
+            '%' => 14.2265625,
+            '&' => 10.671875,
+            '\'' => 3.0546875,
+            '(' => 5.328125,
+            ')' => 5.328125,
+            '*' => 6.2265625,
+            '+' => 9.34375,
+            ',' => 4.4453125,
+            '-' => 5.328125,
+            '.' => 4.4453125,
+            '/' => 4.4453125,
+            '0' => 8.8984375,
+            '1' => 7.7228125,
+            '2' => 8.8984375,
+            '3' => 8.8984375,
+            '4' => 8.8984375,
+            '5' => 8.8984375,
+            '6' => 8.8984375,
+            '7' => 8.8984375,
+            '8' => 8.8984375,
+            '9' => 8.8984375,
+            ':' => 4.4453125,
+            ';' => 4.4453125,
+            '<' => 9.34375,
+            '=' => 9.34375,
+            '>' => 9.34375,
+            '?' => 8.8984375,
+            '@' => 16.2421875,
+            'A' => 10.671875,
+            'B' => 10.671875,
+            'C' => 11.5546875,
+            'D' => 11.5546875,
+            'E' => 10.671875,
+            'F' => 9.7734375,
+            'G' => 12.4453125,
+            'H' => 11.5546875,
+            'I' => 4.4453125,
+            'J' => 8.0,
+            'K' => 10.671875,
+            'L' => 8.8984375,
+            'M' => 13.328125,
+            'N' => 11.5546875,
+            'O' => 12.4453125,
+            'P' => 10.671875,
+            'Q' => 12.4453125,
+            'R' => 11.5546875,
+            'S' => 10.671875,
+            'T' => 9.7734375,
+            'U' => 11.5546875,
+            'V' => 10.671875,
+            'W' => 15.1015625,
+            'X' => 10.671875,
+            'Y' => 10.671875,
+            'Z' => 9.7734375,
+            '[' => 4.4453125,
+            '\\' => 4.4453125,
+            ']' => 4.4453125,
+            '^' => 7.5078125,
+            '_' => 8.8984375,
+            '`' => 5.328125,
+            'a' => 8.8984375,
+            'b' => 8.8984375,
+            'c' => 8.0,
+            'd' => 8.8984375,
+            'e' => 8.8984375,
+            'f' => 4.15921875,
+            'g' => 8.8984375,
+            'h' => 8.8984375,
+            'i' => 3.5546875,
+            'j' => 3.5546875,
+            'k' => 8.0,
+            'l' => 3.5546875,
+            'm' => 13.328125,
+            'n' => 8.8984375,
+            'o' => 8.8984375,
+            'p' => 8.8984375,
+            'q' => 8.8984375,
+            'r' => 5.328125,
+            's' => 8.0,
+            't' => 4.4453125,
+            'u' => 8.8984375,
+            'v' => 8.0,
+            'w' => 11.5546875,
+            'x' => 8.0,
+            'y' => 8.0,
+            'z' => 8.0,
+            '{' => 5.34375,
+            '|' => 4.15625,
+            '}' => 5.34375,
+            '~' => 9.34375,
+            _ => 8.0, // who knows
+        };
+        acc + char_width * font_size / char_height
+    })
+}
+
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
@@ -14,6 +121,8 @@ pub struct Props {
     #[prop_or("#676a6f".into())]
     pub background_color: AttrValue,
     pub height: AttrValue,
+    #[prop_or(0.5)]
+    pub inline_padding: f64,
     #[prop_or(0.1)]
     pub control_point_0_ratio: f64,
     #[prop_or(0.1)]
@@ -34,8 +143,11 @@ pub fn Tooltip(props: &Props) -> Html {
     // estimate the width of the text:
     // assuming the width of the text is equal to its height
     // (seems to be the case for uppercase letters)
-    let padding_inline_sum = v_height * (1.0 - props.font_height_ratio);
-    let stalk_width = props.text.len() as f64 * font_size + padding_inline_sum;
+    // assuming spaces have half the width
+    let padding_inline_sum = v_height * (1.0 - props.font_height_ratio) * props.inline_padding;
+
+    let stalk_width =
+        padding_inline_sum + calculate_text_width(&props.text, font_size);
 
     let style = format!("height: {};", props.height);
 

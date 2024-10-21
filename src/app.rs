@@ -37,8 +37,8 @@ pub fn App() -> Html {
     // initial is pure blue
     let background_color = use_state(|| "#676a6f".to_string());
 
-    let tip_height_ratio = use_state(|| 1.0/6.0);
-    let tip_aspect_ratio = use_state(|| 4.0/3.0);
+    let tip_height_ratio = use_state(|| 1.0 / 6.0);
+    let tip_aspect_ratio = use_state(|| 4.0 / 3.0);
 
     let tip_pointness = use_state(|| 0.1);
     let contact_convergence = use_state(|| 0.1);
@@ -46,6 +46,8 @@ pub fn App() -> Html {
     let font_height_ratio = use_state(|| 0.31);
     let text_color = use_state(|| "#ffffff".to_string());
     let text = use_state(|| AttrValue::from("ADD"));
+
+    let inline_padding = use_state(|| 1.0);
 
     html! {
         <>
@@ -65,6 +67,7 @@ pub fn App() -> Html {
                     tip_aspect_ratio={*tip_aspect_ratio}
                     background_color={AttrValue::from(( *background_color ).clone())}
                     height={format!("{}px", *height_percentage * BUTTON_SIZE)}
+                    inline_padding={*inline_padding}
                     control_point_0_ratio={*tip_pointness}
                     control_point_1_ratio={*contact_convergence}
                     font_height_ratio={*font_height_ratio}
@@ -129,7 +132,7 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
-                  { format!("Tip Aspect Ratio: {:.2}", *tip_aspect_ratio) }
+                    { format!("Tip Aspect Ratio: {:.2}", *tip_aspect_ratio) }
                     <br />
                     <input
                         type="range"
@@ -188,7 +191,21 @@ pub fn App() -> Html {
                     }}
                     />
                 </label>
-
+                <label>
+                    { format!("Inline Padding: {:.2} ", *inline_padding) }
+                    <br />
+                    <input
+                        type="range"
+                        value={inline_padding.to_string()}
+                        min=0.2
+                        max=1.5
+                        step=0.01
+                        oninput={move |e: InputEvent| {
+                            let target = e.target_dyn_into::<HtmlInputElement>().unwrap();
+                            inline_padding.set(target.value_as_number());
+                    }}
+                    />
+                </label>
                 <label>
                     { format!{"Backgroud Color: {}", *background_color} }
                     <br />
@@ -214,7 +231,7 @@ pub fn App() -> Html {
                     />
                 </label>
                 <label>
-                    { format!{"Text: {}", *text} }
+                    { "Text: " }
                     <br />
                     <input
                         type="text"
@@ -225,7 +242,6 @@ pub fn App() -> Html {
                     }}
                     />
                 </label>
-
             </div>
         </>
     }
