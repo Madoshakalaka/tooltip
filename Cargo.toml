@@ -9,8 +9,15 @@ license = "MIT OR Apache-2.0"
 keywords = ["yew", "trunk"]
 categories = ["gui", "wasm", "web-programming"]
 
+
+
+[patch.crates-io]
+yew = {git = "https://github.com/yewstack/yew.git"}
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 yew = { version="0.21", features=["csr"] }
-web-sys = { version = "0.3.70", features = ["HtmlInputElement"] }
+bounce = "0.9.0"
+web-sys = { version = "0.3.70", features = ["HtmlInputElement", "Element", "DomRect", "Window"] }
 wasm-bindgen = "=0.2.93"
+

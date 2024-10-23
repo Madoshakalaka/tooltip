@@ -107,6 +107,10 @@ fn calculate_text_width(text: &str, font_size: f64) -> f64 {
     })
 }
 
+pub struct TooltipState{
+
+}
+
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
