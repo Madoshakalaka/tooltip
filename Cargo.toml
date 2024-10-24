@@ -18,6 +18,12 @@ yew = {git = "https://github.com/yewstack/yew.git"}
 [dependencies]
 yew = { version="0.21", features=["csr"] }
 bounce = "0.9.0"
-web-sys = { version = "0.3.70", features = ["HtmlInputElement", "Element", "DomRect", "Window"] }
+web-sys = { version = "0.3.70", features = ["HtmlInputElement", "Element", "DomRect", "Window", "SvgAnimateMotionElement", "SvgAnimationElement"] }
 wasm-bindgen = "=0.2.93"
 
+# "demo" feature is optional and requires stylist 0.13.0 
+stylist = { version = "0.13.0", features = ["yew_integration"], optional = true }
+yew-hooks = "0.3.2"
+
+[features]
+demo = ["dep:stylist"]

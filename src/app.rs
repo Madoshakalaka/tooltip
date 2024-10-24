@@ -2,9 +2,10 @@ use bounce::BounceRoot;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use tooltip::Tooltip;
+use tooltip::{QuestionMark, Tooltip};
 
-const BUTTON_SIZE: f64 = 60.0;
+#[cfg(feature = "demo")]
+use stylist::yew::styled_component_impl;
 
 #[derive(Properties, PartialEq)]
 pub struct MockButtonProps {
@@ -52,42 +53,29 @@ pub fn MockButton(props: &MockButtonProps) -> Html {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: calc({EDITOR_SIZE}/10);
+                height: {};
                 aspect-ratio: 1/1;
-                "#)}
+                "#, button_size())}
         >
-            <svg style={ format!("height: 50%; aspect-ratio: {aspect_ratio};") } viewBox={ format!( "0 0 {} 512", props.flavor.view_box_width() ) }>
-                <path
-                    fill="black"
-                    d={props.flavor.d()}
-                />
+            <svg
+                style={format!("height: 50%; aspect-ratio: {aspect_ratio};")}
+                viewBox={format!( "0 0 {} 512", props.flavor.view_box_width() )}
+            >
+                <path fill="black" d={props.flavor.d()} />
             </svg>
         </div>
     }
 }
 
-const EDITOR_SIZE: & str = "min(80vw, 80vh)";
+const EDITOR_SIZE: &str = "min(80vw, 80vh)";
 
+fn button_size() -> String {
+    format!("calc({} / 10)", EDITOR_SIZE)
+}
+
+#[cfg_attr(feature = "demo", styled_component_impl)]
 #[function_component]
 pub fn App() -> Html {
-    let height_percentage = use_state(|| 0.69); // nice
-    let border_radius = use_state(|| 0.12);
-    // initial is pure blue
-    let background_color = use_state(|| "#676a6f".to_string());
-
-    let tip_height_ratio = use_state(|| 1.0 / 6.0);
-    let tip_aspect_ratio = use_state(|| 4.0 / 3.0);
-
-    let tip_pointness = use_state(|| 0.1);
-    let contact_convergence = use_state(|| 0.1);
-
-    let font_height_ratio = use_state(|| 0.31);
-    let text_color = use_state(|| "#ffffff".to_string());
-    let text = use_state(|| AttrValue::from("ADD"));
-
-    let inline_padding = use_state(|| 1.0);
-    let mirror = use_state(|| false);
-
     html! {
         <BounceRoot>
             <div
@@ -99,45 +87,71 @@ pub fn App() -> Html {
             align-items: center;
             "#
             >
-              <div style={ format!( "border-radius: 5%; border: 2px solid rgb(209,213,219); aspect-ratio: 1/1; width: {EDITOR_SIZE}; position: relative;" ) }>
+                <div
+                    style={format!( "border-radius: 5%; border: 2px solid rgb(209,213,219); aspect-ratio: 1/1; width: {EDITOR_SIZE}; position: relative;" )}
+                >
+                    <div
+                        style="position: absolute; left: 0; top: 50%; transform: translateY(-50%);"
+                    >
+                        <div style="position: relative;">
+                            <QuestionMark
+                                classes={css!{height: ${format!("calc({} * 0.7)", button_size())}; position: absolute; left: 50%; bottom: -4%; transform: translate(-50%, 100%);}}
+                            />
+                            <div style="position: relative;">
+                                <Tooltip
+                                    height={format!("calc({} * 0.8)", button_size())}
+                                    text="Add"
+                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                />
+                                <MockButton flavor={Flavor::Plus} />
+                            </div>
 
-                <div style="position: absolute; left: 0; top: 50%; transform: translateY(-50%);">
-                    <MockButton flavor={Flavor::Plus}/>
-                    <MockButton flavor={Flavor::Minus}/>
-                    <MockButton flavor={Flavor::RightArrow}/>
-                    <MockButton flavor={Flavor::ResetView}/>
+                            <div style="position: relative;">
+                                <Tooltip
+                                    height={format!("calc({} * 0.8)", button_size())}
+                                    text="Remove"
+                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                />
+                                <MockButton flavor={Flavor::Minus} />
+                            </div>
+
+                            <div style="position: relative;">
+                                <Tooltip
+                                    height={format!("calc({} * 0.8)", button_size())}
+                                    text="Connect"
+                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                />
+                                <MockButton flavor={Flavor::RightArrow} />
+                            </div>
+
+                            <div style="position: relative;">
+                                <Tooltip
+                                    height={format!("calc({} * 0.8)", button_size())}
+                                    text="Reset View"
+                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                />
+                                <MockButton flavor={Flavor::ResetView} />
+                            </div>
+
+                        </div>
+                    </div>
+                    <div
+                        style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);"
+                    >
+                       
+                            <div style="position: relative;">
+                                <Tooltip
+                                    height={format!("calc({} * 0.8)", button_size())}
+                                    text="Permissions"
+                                    classes={css!{position: absolute; top: 50%; left: -15%;}}
+                                    mirror = {true}
+                                />
+                                <MockButton flavor={Flavor::Permissions} />
+                            </div>
+
+                    </div>
                 </div>
-
-
-                <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);">
-                    <MockButton flavor={Flavor::Permissions}/>
-                </div>
-
-
-
-
-              </div>
-
-
-
-                // <MockButton />
-                // <Tooltip
-                //     border_radius_ratio={*border_radius}
-                //     tip_height_ratio={*tip_height_ratio}
-                //     tip_aspect_ratio={*tip_aspect_ratio}
-                //     background_color={AttrValue::from(( *background_color ).clone())}
-                //     height={format!("{}px", *height_percentage * BUTTON_SIZE)}
-                //     inline_padding={*inline_padding}
-                //     control_point_0_ratio={*tip_pointness}
-                //     control_point_1_ratio={*contact_convergence}
-                //     font_height_ratio={*font_height_ratio}
-                //     text_color={AttrValue::from(( *text_color ).clone())}
-                //     text={(*text).clone()}
-                //     mirror={*mirror}
-                // />
-
             </div>
-
         </BounceRoot>
     }
 }
