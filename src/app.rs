@@ -81,12 +81,13 @@ pub fn App() -> Html {
             <div
                 style=r#"
                 width: 100%;
-                height: 100vh;
+                height: 120vh;
                 display: flex;
             justify-content: center;
             align-items: center;
             "#
             >
+                <div id="animated-tooltip-container" />
                 <div
                     style={format!( "border-radius: 5%; border: 2px solid rgb(209,213,219); aspect-ratio: 1/1; width: {EDITOR_SIZE}; position: relative;" )}
                 >
@@ -105,7 +106,6 @@ pub fn App() -> Html {
                                 />
                                 <MockButton flavor={Flavor::Plus} />
                             </div>
-
                             <div style="position: relative;">
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
@@ -114,7 +114,6 @@ pub fn App() -> Html {
                                 />
                                 <MockButton flavor={Flavor::Minus} />
                             </div>
-
                             <div style="position: relative;">
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
@@ -123,7 +122,6 @@ pub fn App() -> Html {
                                 />
                                 <MockButton flavor={Flavor::RightArrow} />
                             </div>
-
                             <div style="position: relative;">
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
@@ -132,23 +130,20 @@ pub fn App() -> Html {
                                 />
                                 <MockButton flavor={Flavor::ResetView} />
                             </div>
-
                         </div>
                     </div>
                     <div
                         style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);"
                     >
-                       
-                            <div style="position: relative;">
-                                <Tooltip
-                                    height={format!("calc({} * 0.8)", button_size())}
-                                    text="Permissions"
-                                    classes={css!{position: absolute; top: 50%; left: -15%;}}
-                                    mirror = {true}
-                                />
-                                <MockButton flavor={Flavor::Permissions} />
-                            </div>
-
+                        <div style="position: relative;">
+                            <Tooltip
+                                height={format!("calc({} * 0.8)", button_size())}
+                                text="Permissions"
+                                classes={css!{position: absolute; top: 50%; left: -15%;}}
+                                mirror=true
+                            />
+                            <MockButton flavor={Flavor::Permissions} />
+                        </div>
                     </div>
                 </div>
             </div>

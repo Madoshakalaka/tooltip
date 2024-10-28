@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use bounce::{use_slice, use_slice_dispatch, use_slice_value, Slice};
-use web_sys::{Element, SvgAnimateMotionElement, SvgAnimationElement};
+use web_sys::{DomRect, Element, SvgAnimateMotionElement, SvgAnimationElement};
 use yew::prelude::*;
-use yew_hooks::use_timeout;
+use yew_hooks::{use_raf, use_timeout};
 
 /// https://gist.github.com/aminnj/5ca372aa2def72fb017b531c894afdca
 fn calculate_text_width(text: &str, font_size: f64) -> f64 {
@@ -215,38 +215,36 @@ pub struct Props {
     pub mirror: bool,
 }
 
+struct StaticReference {
+    question_mark: DomRect,
+    tooltip: DomRect,
+}
+
 #[function_component]
 pub fn Tooltip(props: &Props) -> Html {
     let node_ref = use_node_ref();
-    let dispatch_group_state = use_slice_dispatch::<TooltipGroupState>();
+
+    let elapsed = use_raf(500, 3000);
+
     let question_mark = use_slice_value::<QuestionMarkState>();
 
-    let hiding = use_state(|| false);
     let before_hiding_params = use_mut_ref(|| None);
-    use_effect({
-        let hiding = *hiding;
+    use_effect_with(question_mark.clone(), {
         let before_hiding_params = before_hiding_params.clone();
         let node_ref = node_ref.clone();
-        move || {
-            if !hiding {
+        move |q| {
+            if let Some(q) = &q.0 {
                 let svg = node_ref.cast::<Element>().unwrap();
-                let rect = svg.get_bounding_client_rect();
-                *(before_hiding_params.borrow_mut()) = Some(rect);
+                let tooltip_rect = svg.get_bounding_client_rect();
+                let q = q.cast::<Element>().unwrap();
+                let question_mark_rect = q.get_bounding_client_rect();
+                *(before_hiding_params.borrow_mut()) = Some(StaticReference {
+                    question_mark: question_mark_rect,
+                    tooltip: tooltip_rect,
+                });
             }
         }
     });
-
-    let timeout = {
-        let hiding = hiding.setter();
-        use_timeout(
-            move || {
-                hiding.set(true);
-            },
-            1000,
-        )
-    };
-
-    dispatch_group_state(Action::AddTooltip(node_ref.clone()));
 
     let v_height = 100f64;
     let font_size = props.font_height_ratio * v_height;
@@ -260,42 +258,10 @@ pub fn Tooltip(props: &Props) -> Html {
 
     let v_width = stalk_width + tip_width;
 
-    let (view_box, translate_x, height, translate_y, v_drift, h_drift) = if !*hiding {
-        (
-            format!("0 0 {} {}", v_width, v_height),
-            if !props.mirror {1.0} else {-1.0},
-            props.height.clone(),
-            -0.5,
-            None,
-            None
-        )
-    } else {
-        let question_mark = question_mark.0.as_ref().unwrap().cast::<Element>().unwrap();
-        let rect = question_mark.get_bounding_client_rect();
-        let tooltip_rect = before_hiding_params.borrow().as_ref().unwrap().clone();
-        let new_v_width = v_width / tooltip_rect.width() * (tooltip_rect.right() - rect.x());
-        let h_drift = v_width / tooltip_rect.width()
-            * ((rect.x() + rect.width() / 2.0)
-                - (tooltip_rect.x() + tooltip_rect.width() / 2.0));
-
-
-        let new_v_height = v_height / tooltip_rect.height() * (rect.bottom() - tooltip_rect.top());
-        let v_drift = v_height / tooltip_rect.height()
-            * ((rect.bottom() - rect.height() / 2.0)
-                - ( tooltip_rect.bottom()
-                    - tooltip_rect.height() / 2.0 ));
-
-        let new_x = -1.0 * (new_v_width - v_width);
-        (
-            format!("{new_x} 0 {new_v_width} {new_v_height}"),
-            // v_width / new_v_width,
-            if !props.mirror {v_width / new_v_width} else {-1.0},
-            format!("calc({} * {})", props.height, new_v_height / v_height).into(),
-            -1.0 * v_height / 2.0 / new_v_height,
-            Some(v_drift),
-            Some(h_drift)
-        )
-    };
+    let view_box = format!("0 0 {} {}", v_width, v_height);
+    let translate_x = if !props.mirror { 1.0 } else { -1.0 };
+    let height = props.height.clone();
+    let translate_y = -0.5;
 
     let touch_point_x = tip_width;
     let upper_touch_point_y = (1.0 - props.tip_height_ratio) * v_height / 2.0;
@@ -323,88 +289,95 @@ pub fn Tooltip(props: &Props) -> Html {
         v_height / 2.0,
     );
 
-    let motion_ref = use_node_ref();
-    let rounding_ref = use_node_ref();
-    let transparency_ref = use_node_ref();
-    
-    use_effect_with(*hiding, {
-        let motion_ref = motion_ref.clone();
-        let rounding_ref = rounding_ref.clone();
-        let transparency_ref = transparency_ref.clone();
-        move |hiding| {
-            if *hiding {
-                let _ = motion_ref
-                    .cast::<SvgAnimateMotionElement>()
-                    .unwrap()
-                    .begin_element();
-                // let _ = rounding_ref
-                //     .cast::<SvgAnimationElement>()
-                //     .unwrap()
-                //     .begin_element();
-                let _ = transparency_ref
-                    .cast::<SvgAnimationElement>()
-                    .unwrap()
-                    .begin_element();
-            }
-        }
-    });
-    let dur = "0.5s";
-    let animate_motion = hiding.then(|| {
-        let v_drift = v_drift.unwrap();
-        let h_drift = h_drift.unwrap();
-        html! {
-            <@{"animateMotion"} ref={motion_ref} {dur} path={format!( "M 0 0 v {v_drift} h {h_drift}" )} fill="freeze" />
+    let (svg_classes, svg_style) = if elapsed <= 0.0 {
+        (
+            props.classes.clone(),
+            format!(
+                "transform: translate({}%, {}%);",
+                translate_x * 100.0,
+                translate_y * 100.0,
+            ),
+        )
+    } else {
+        let before_hiding_params = before_hiding_params.borrow();
+        let reference = before_hiding_params.as_ref().unwrap();
+        // the user might have scrolled and/or zoomed.
+        // we figure out the affine transformation
+        let q_now = question_mark.0.as_ref().unwrap().cast::<Element>();
+        let q_rect_now = q_now.unwrap().get_bounding_client_rect();
+        // say new_coord = old_coord * scale + translate
+        let scale = q_rect_now.width() / reference.question_mark.width();
+        let translate_x = q_rect_now.x() - reference.question_mark.x() * scale;
+        let translate_y = q_rect_now.y() - reference.question_mark.y() * scale;
+        let transform = |x: f64, y: f64| (x * scale + translate_x, y * scale + translate_y);
 
-        }
-    });
-    let animate_rounding = hiding.then(|| {
-        html! {
-            <animate ref={rounding_ref} attributeName="rx" {dur} to={(v_height/2.0).to_string()} fill="freeze" />
-        }
-    });
-    let animate_transparency = hiding.then(|| {
-        html! {
-            <animate ref={transparency_ref} attributeName="fill-opacity" {dur} to="0" fill="freeze" />
-        }
-    });
+        let reference_h_drift = (reference.question_mark.x()
+            + reference.question_mark.width() / 2.0)
+            - (reference.tooltip.x() + reference.tooltip.width() / 2.0);
+        let reference_v_drift = (reference.question_mark.bottom()
+            - reference.question_mark.height() / 2.0)
+            - (reference.tooltip.bottom() - reference.tooltip.height() / 2.0);
 
-    html! {
+        let inflection =
+            reference_v_drift.abs() / (reference_v_drift.abs() + reference_h_drift.abs());
+
+        let (left, top) = if elapsed <= inflection {
+            let t = elapsed / inflection;
+            let top = reference.tooltip.top() + reference_v_drift * t;
+            transform(reference.tooltip.x(), top)
+        } else {
+            let t = (elapsed - inflection) / (1.0 - inflection);
+            let left = reference.tooltip.x() + reference_h_drift * t;
+            transform(left, reference.tooltip.top() + reference_v_drift)
+        };
+
+        (
+            Default::default(),
+            format!("position:fixed; top: {top}px; left: {left}px;"),
+        )
+    };
+
+    let ret = html! {
         <svg
             viewBox={view_box}
-            class={props.classes.clone()}
+            class={svg_classes}
             ref={node_ref}
-            style={format!("transform: translate({}%, {}%); height: {};", translate_x * 100.0, translate_y * 100.0, height)}
+            style={format!("{svg_style} height: {height};")}
+            opacity={(1.0 - elapsed).to_string()}
         >
-            <g>
-                { animate_motion }
-                { animate_transparency }
-                <rect
-                    x={if !props.mirror {tip_width.to_string()} else {0.0.to_string()}}
-                    width={stalk_width.to_string()}
-                    height={v_height.to_string()}
-                    rx={( props.border_radius_ratio * v_height ).to_string()}
-                    fill={props.background_color.clone()}
-                >
-                // { animate_rounding }
-                </rect>
-                <text
-                    x={if !props.mirror {(tip_width + stalk_width / 2.0).to_string()}else{(stalk_width / 2.0).to_string()}}
-                    y={(v_height / 2.0).to_string()}
-                    text-anchor="middle"
-                    dominant-baseline="central"
-                    fill={props.text_color.clone()}
-                    font-size={font_size.to_string()}
-                    // sans-serif
-                    font-family="Arial"
-                >
-                    { props.text.clone() }
-                </text>
-                <path
-                    {d}
-                    fill={props.background_color.clone()}
-                    transform={props.mirror.then_some( format!("scale(-1, 1) translate({}, 0)", -1.0 * tip_width - stalk_width) )}
-                />
-            </g>
+            <rect
+                x={if !props.mirror {tip_width.to_string()} else {0.0.to_string()}}
+                width={stalk_width.to_string()}
+                height={v_height.to_string()}
+                rx={( props.border_radius_ratio * v_height ).to_string()}
+                fill={props.background_color.clone()}
+            />
+            <text
+                x={if !props.mirror {(tip_width + stalk_width / 2.0).to_string()}else{(stalk_width / 2.0).to_string()}}
+                y={(v_height / 2.0).to_string()}
+                text-anchor="middle"
+                dominant-baseline="central"
+                fill={props.text_color.clone()}
+                font-size={font_size.to_string()}
+                // sans-serif
+                font-family="Arial"
+            >
+                { props.text.clone() }
+            </text>
+            <path
+                {d}
+                fill={props.background_color.clone()}
+                transform={props.mirror.then_some( format!("scale(-1, 1) translate({}, 0)", -1.0 * tip_width - stalk_width) )}
+            />
         </svg>
+    };
+    if elapsed <= 0.0 {
+        ret
+    } else {
+        let document = web_sys::window().unwrap().document().unwrap();
+        let host = document
+            .get_element_by_id("animated-tooltip-container")
+            .unwrap();
+        create_portal(ret, host)
     }
 }
