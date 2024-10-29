@@ -102,7 +102,8 @@ pub fn App() -> Html {
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
                                     text="Add"
-                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                    static_top="50%"
+                                    static_right="-15%"
                                 />
                                 <MockButton flavor={Flavor::Plus} />
                             </div>
@@ -110,7 +111,8 @@ pub fn App() -> Html {
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
                                     text="Remove"
-                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                    static_top="50%"
+                                    static_right="-15%"
                                 />
                                 <MockButton flavor={Flavor::Minus} />
                             </div>
@@ -118,7 +120,8 @@ pub fn App() -> Html {
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
                                     text="Connect"
-                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                    static_top="50%"
+                                    static_right="-15%"
                                 />
                                 <MockButton flavor={Flavor::RightArrow} />
                             </div>
@@ -126,7 +129,8 @@ pub fn App() -> Html {
                                 <Tooltip
                                     height={format!("calc({} * 0.8)", button_size())}
                                     text="Reset View"
-                                    classes={css!{position: absolute; top: 50%; right: -15%;}}
+                                    static_top="50%"
+                                    static_right="-15%"
                                 />
                                 <MockButton flavor={Flavor::ResetView} />
                             </div>
@@ -139,7 +143,8 @@ pub fn App() -> Html {
                             <Tooltip
                                 height={format!("calc({} * 0.8)", button_size())}
                                 text="Permissions"
-                                classes={css!{position: absolute; top: 50%; left: -15%;}}
+                                static_top="50%"
+                                static_left="-15%"
                                 mirror=true
                             />
                             <MockButton flavor={Flavor::Permissions} />
