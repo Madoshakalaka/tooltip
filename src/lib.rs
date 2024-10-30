@@ -117,11 +117,12 @@ fn calculate_text_width(text: &str, font_size: f64) -> f64 {
 #[derive(PartialEq, Default, Slice, Clone)]
 pub struct QuestionMarkState {
     node_ref: Option<NodeRef>,
-    filling_started: bool,
+    fill_animation: Option<NodeRef>,
+    background_animation: Option<NodeRef>,
 }
 
 pub enum QuestionMarkAction {
-    Set(NodeRef),
+    Set(NodeRef, NodeRef, NodeRef),
     StartFilling,
 }
 
@@ -131,11 +132,26 @@ impl Reducible for QuestionMarkState {
     fn reduce(mut self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         let question_mark = Rc::make_mut(&mut self);
         match action {
-            QuestionMarkAction::Set(node_ref) => {
+            QuestionMarkAction::Set(node_ref, f, b) => {
                 question_mark.node_ref = Some(node_ref);
+                question_mark.fill_animation = Some(f);
+                question_mark.background_animation = Some(b);
             }
             QuestionMarkAction::StartFilling => {
-                question_mark.filling_started = true;
+                let _ = self
+                    .fill_animation
+                    .as_ref()
+                    .unwrap()
+                    .cast::<SvgAnimationElement>()
+                    .unwrap()
+                    .begin_element();
+                let _ = self
+                    .background_animation
+                    .as_ref()
+                    .unwrap()
+                    .cast::<SvgAnimationElement>()
+                    .unwrap()
+                    .begin_element();
             }
         }
         self
@@ -175,27 +191,60 @@ impl Reducible for TooltipGroupState {
 #[derive(Properties, PartialEq)]
 pub struct QuestionMarkProps {
     pub classes: Classes,
+    #[prop_or(3500)]
+    pub animation_start_time: u32,
 }
 
 #[function_component]
 pub fn QuestionMark(props: &QuestionMarkProps) -> Html {
     let node_ref = use_node_ref();
+    let fill_animation = use_node_ref();
+    let background_animation = use_node_ref();
     let q_s = use_slice::<QuestionMarkState>();
-    q_s.dispatch(QuestionMarkAction::Set(node_ref.clone()));
+    q_s.dispatch(QuestionMarkAction::Set(
+        node_ref.clone(),
+        fill_animation.clone(),
+        background_animation.clone(),
+    ));
+    let begin = format!("{}ms", props.animation_start_time);
 
     html! {
         <svg viewBox="0 0 512 512" class={props.classes.clone()} ref={node_ref}>
-            <circle fill="#000000" cx="256" cy="256" r="250" />
+            <circle fill="#ffffff" cx="256" cy="256" r="250">
+                <animate
+                    attributeName="fill"
+                    from="#ffffff"
+                    to="black"
+                    dur="0.5s"
+                    fill="freeze"
+                    begin="3500ms"
+                />
+            </circle>
             <path
                 fill="#676a6f"
                 d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM169.8 165.3c7.9-22.3 29.1-37.3 52.8-37.3h58.3c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24V250.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1H222.6c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
-            />
+            >
+                <animate
+                    attributeName="fill"
+                    to="#ffffff"
+                    dur="0.5s"
+                    fill="freeze"
+                    begin="3500ms"
+                />
+            </path>
+            <circle fill="none" stroke="#676a6f" stroke-width="0" cx="256" cy="256" r="250">
+                <animate attributeName="stroke-width" to="5" dur="0.5s" fill="freeze" begin="3500ms" />
+            </circle>
         </svg>
     }
 }
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
+    #[prop_or(500)]
+    pub animation_duration: u32,
+    #[prop_or(3000)]
+    pub animation_start_time: u32,
     #[prop_or_default]
     pub static_bottom: Option<AttrValue>,
     #[prop_or_default]
@@ -242,12 +291,22 @@ struct StaticReference {
 pub fn Tooltip(props: &Props) -> Html {
     let node_ref = use_node_ref();
 
-    let elapsed = use_raf(500, 3000);
+    let elapsed = use_raf(props.animation_duration, props.animation_start_time);
 
-    let question_mark = use_slice_value::<QuestionMarkState>();
+    let question_mark = use_slice::<QuestionMarkState>();
+
+    // let timeout = {
+    //     let question_mark = question_mark.clone();
+    //     use_timeout(
+    //         move || {
+    //             question_mark.dispatch(QuestionMarkAction::StartFilling);
+    //         },
+    //         pr
+    //     )
+    // };
 
     let before_hiding_params = use_mut_ref(|| None);
-    use_effect_with(question_mark.clone(), {
+    use_effect_with((*question_mark).clone(), {
         let before_hiding_params = before_hiding_params.clone();
         let node_ref = node_ref.clone();
         move |q| {
