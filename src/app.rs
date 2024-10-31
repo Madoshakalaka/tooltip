@@ -1,5 +1,5 @@
 use bounce::BounceRoot;
-use web_sys::HtmlInputElement;
+
 use yew::prelude::*;
 
 use tooltip::{QuestionMark, Tooltip};

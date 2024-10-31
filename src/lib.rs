@@ -1,15 +1,12 @@
 use std::rc::Rc;
 
-use bounce::{use_slice, use_slice_dispatch, use_slice_value, Slice};
-use gloo_console::console_dbg;
+use bounce::{use_slice, use_slice_value, Slice};
+
 use js_sys::{Array, Object, Reflect};
 use stylist::css;
 use stylist::yew::Global;
-use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{
-    DomRect, Element, FillMode, GetAnimationsOptions, KeyframeAnimationOptions,
-    SvgAnimateMotionElement, SvgAnimationElement,
-};
+use wasm_bindgen::JsValue;
+use web_sys::{DomRect, Element, FillMode, KeyframeAnimationOptions};
 use yew::prelude::*;
 use yew_hooks::{use_raf, use_timeout};
 
@@ -142,36 +139,6 @@ impl Reducible for QuestionMarkState {
             }
             QuestionMarkAction::SetDisplayTooltips(display_tooltips) => {
                 question_mark.display_tooltips = Some(display_tooltips);
-            }
-        }
-        self
-    }
-}
-
-#[derive(PartialEq, Default, Slice, Clone)]
-pub struct TooltipGroupState {
-    tooltips: Vec<NodeRef>,
-}
-
-pub enum Action {
-    AddTooltip(NodeRef),
-    RemoveTooltip(NodeRef),
-}
-
-impl Reducible for TooltipGroupState {
-    type Action = Action;
-
-    fn reduce(mut self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        let tooltips = Rc::make_mut(&mut self);
-        match action {
-            Action::AddTooltip(tooltip) => {
-                // only add if not already in the list
-                if !tooltips.tooltips.contains(&tooltip) {
-                    tooltips.tooltips.push(tooltip);
-                }
-            }
-            Action::RemoveTooltip(tooltip) => {
-                tooltips.tooltips.retain(|t| t != &tooltip);
             }
         }
         self
@@ -493,7 +460,7 @@ pub fn Tooltip(props: &Props) -> Html {
     svg_style.push_str("height: ");
     svg_style.push_str(&height);
     svg_style.push_str("; ");
-    if elapsed == 0.0 {
+    if elapsed == 0.0 || question_mark.display_tooltips.is_some() {
         svg_style.push_str("animation: tooltip-fade-in 0.2s ease-out, ");
         if !props.mirror {
             svg_style.push_str("tooltip-slide-in-left 0.2s ease-out;");
@@ -511,8 +478,13 @@ pub fn Tooltip(props: &Props) -> Html {
         None => 1.0 - elapsed,
     };
     svg_style.push_str(&format!("opacity: {}; ", opacity));
+
     if question_mark.display_tooltips.is_some() {
         svg_style.push_str("transition: opacity 0.2s ease-out, transform 0.2s ease-out;");
+
+        if !question_mark.display_tooltips.unwrap() {
+            svg_style.push_str("pointer-events: none;");
+        }
     }
 
     let ret = html! {
@@ -522,12 +494,7 @@ pub fn Tooltip(props: &Props) -> Html {
     "@keyframes tooltip-fade-in { 0% { opacity: 0; } } @keyframes tooltip-slide-in-left { 0% { transform: translate(90%, -50%); } } @keyframes tooltip-slide-in-right { 0% { transform: translate(-90%, -50%); } }"
             }}
             />
-            <svg
-                viewBox={view_box}
-                class={props.classes.clone()}
-                ref={node_ref}
-                style={svg_style}
-                // opacity={opacity.to_string()}
+            <svg viewBox={view_box} class={props.classes.clone()} ref={node_ref} style={svg_style}// opacity={opacity.to_string()}
             >
                 <rect
                     x={if !props.mirror {tip_width.to_string()} else {0.0.to_string()}}
