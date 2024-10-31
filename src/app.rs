@@ -4,7 +4,6 @@ use yew::prelude::*;
 
 use tooltip::{QuestionMark, Tooltip};
 
-#[cfg(feature = "demo")]
 use stylist::yew::styled_component_impl;
 
 #[derive(Properties, PartialEq)]
@@ -111,7 +110,7 @@ pub fn TooltipedButton(props: &TooltipedButtonProps) -> Html {
     }
 }
 
-#[cfg_attr(feature = "demo", styled_component_impl)]
+#[styled_component_impl]
 #[function_component]
 pub fn App() -> Html {
     html! {
@@ -134,7 +133,8 @@ pub fn App() -> Html {
                     >
                         <div style="position: relative;">
                             <QuestionMark
-                                classes={css!{height: ${format!("calc({} * 0.7)", button_size())}; position: absolute; left: 50%; bottom: -4%; transform: translate(-50%, 100%);}}
+                                height={format!("calc({} * 0.7)", button_size())}
+                                animation={Some(Default::default())}
                             />
                             <TooltipedButton flavor={Flavor::Plus} text="Add" mirror=false />
                             <TooltipedButton flavor={Flavor::Minus} text="Remove" mirror=false />
