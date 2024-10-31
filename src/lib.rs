@@ -1,9 +1,15 @@
 use std::rc::Rc;
 
 use bounce::{use_slice, use_slice_dispatch, use_slice_value, Slice};
+use gloo_console::console_dbg;
+use js_sys::{Array, Object, Reflect};
 use stylist::css;
 use stylist::yew::Global;
-use web_sys::{DomRect, Element, SvgAnimateMotionElement, SvgAnimationElement};
+use wasm_bindgen::{JsCast, JsValue};
+use web_sys::{
+    DomRect, Element, FillMode, GetAnimationsOptions, KeyframeAnimationOptions,
+    SvgAnimateMotionElement, SvgAnimationElement,
+};
 use yew::prelude::*;
 use yew_hooks::{use_raf, use_timeout};
 
@@ -117,13 +123,12 @@ fn calculate_text_width(text: &str, font_size: f64) -> f64 {
 #[derive(PartialEq, Default, Slice, Clone)]
 pub struct QuestionMarkState {
     node_ref: Option<NodeRef>,
-    fill_animation: Option<NodeRef>,
-    background_animation: Option<NodeRef>,
+    display_tooltips: Option<bool>,
 }
 
 pub enum QuestionMarkAction {
-    Set(NodeRef, NodeRef, NodeRef),
-    StartFilling,
+    Set(NodeRef),
+    SetDisplayTooltips(bool),
 }
 
 impl Reducible for QuestionMarkState {
@@ -132,26 +137,11 @@ impl Reducible for QuestionMarkState {
     fn reduce(mut self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         let question_mark = Rc::make_mut(&mut self);
         match action {
-            QuestionMarkAction::Set(node_ref, f, b) => {
+            QuestionMarkAction::Set(node_ref) => {
                 question_mark.node_ref = Some(node_ref);
-                question_mark.fill_animation = Some(f);
-                question_mark.background_animation = Some(b);
             }
-            QuestionMarkAction::StartFilling => {
-                let _ = self
-                    .fill_animation
-                    .as_ref()
-                    .unwrap()
-                    .cast::<SvgAnimationElement>()
-                    .unwrap()
-                    .begin_element();
-                let _ = self
-                    .background_animation
-                    .as_ref()
-                    .unwrap()
-                    .cast::<SvgAnimationElement>()
-                    .unwrap()
-                    .begin_element();
+            QuestionMarkAction::SetDisplayTooltips(display_tooltips) => {
+                question_mark.display_tooltips = Some(display_tooltips);
             }
         }
         self
@@ -191,51 +181,136 @@ impl Reducible for TooltipGroupState {
 #[derive(Properties, PartialEq)]
 pub struct QuestionMarkProps {
     pub classes: Classes,
-    #[prop_or(3500)]
-    pub animation_start_time: u32,
+    #[prop_or(3000)]
+    pub animation_delay: u32,
+    #[prop_or(500)]
+    pub animation_duration: u32,
 }
 
 #[function_component]
 pub fn QuestionMark(props: &QuestionMarkProps) -> Html {
+    let waiting_for_initial_anim = use_state(|| true);
+    let _timeout = use_timeout(
+        {
+            let playing_initial_animation = waiting_for_initial_anim.setter();
+            move || {
+                playing_initial_animation.set(false);
+            }
+        },
+        props.animation_delay + props.animation_duration,
+    );
+
+    let prev_anim_was_reverse = use_state(|| false);
+
     let node_ref = use_node_ref();
-    let fill_animation = use_node_ref();
-    let background_animation = use_node_ref();
+    let inner_ref = use_node_ref();
+    let background_ref = use_node_ref();
+    let border_ref = use_node_ref();
     let q_s = use_slice::<QuestionMarkState>();
-    q_s.dispatch(QuestionMarkAction::Set(
-        node_ref.clone(),
-        fill_animation.clone(),
-        background_animation.clone(),
-    ));
-    let begin = format!("{}ms", props.animation_start_time);
+    q_s.dispatch(QuestionMarkAction::Set(node_ref.clone()));
+
+    let onclick = use_callback((prev_anim_was_reverse, *waiting_for_initial_anim), {
+        let inner_ref = inner_ref.clone();
+        let background_ref = background_ref.clone();
+        let border_ref = border_ref.clone();
+        let animation_duration = props.animation_duration;
+        let q_s = q_s.clone();
+        move |_, (r, waiting)| {
+            if !waiting {
+                // let element = node_ref.cast::<Element>().unwrap();
+                // let options = GetAnimationsOptions::new();
+                // options.set_subtree(true);
+                // let anims = element.get_animations_with_options(&options);
+
+                // for anim in anims {
+                //     let anim = anim.dyn_into::<web_sys::Animation>().unwrap();
+                //     anim.cancel();
+                // }
+                let play = |n: &NodeRef, prop: &'static str, value: &'static str| {
+                    let keyframes = Array::new();
+                    let keyframe = Object::new();
+                    let _ = Reflect::set(&keyframe, &prop.into(), &value.into());
+                    keyframes.push(&keyframe);
+
+                    let n = n.cast::<Element>().unwrap();
+                    let options = KeyframeAnimationOptions::new();
+                    options.set_duration(&JsValue::from(animation_duration));
+                    options.set_fill(FillMode::Forwards);
+                    let _ = n.animate_with_keyframe_animation_options(Some(&keyframes), &options);
+                };
+
+                if !**r {
+                    play(&inner_ref, "color", "#ffffff");
+                    play(&background_ref, "color", "#676a6f");
+                    play(&border_ref, "color", "transparent");
+                    q_s.dispatch(QuestionMarkAction::SetDisplayTooltips(true));
+
+                    r.set(true);
+                } else {
+                    play(&inner_ref, "color", "#000000");
+                    play(&background_ref, "color", "#ffffff");
+                    play(&border_ref, "color", "rgb(209,213,219)");
+                    q_s.dispatch(QuestionMarkAction::SetDisplayTooltips(false));
+                    r.set(false);
+                }
+            }
+        }
+    });
 
     html! {
-        <svg viewBox="0 0 512 512" class={props.classes.clone()} ref={node_ref}>
-            <circle fill="#ffffff" cx="256" cy="256" r="250">
-                <animate
-                    attributeName="fill"
-                    from="#ffffff"
-                    to="black"
-                    dur="0.5s"
-                    fill="freeze"
-                    begin="3500ms"
+        <>
+            <Global
+                css={css!{
+                "@keyframes question-mark-inside-invert { to { color: #000000; } } @keyframes question-mark-background-invert { to { color: #ffffff; } }  @keyframes question-mark-outer-stroke-appear { to { color: rgb(209,213,219); } }"
+            }}
+            />
+            <svg viewBox="0 0 512 512" class={props.classes.clone()} ref={node_ref}>
+                <circle
+                    ref={inner_ref}
+                    fill="currentColor"
+                    cx="256"
+                    cy="256"
+                    r="250"
+                    onclick={onclick.clone()}
+                    class={css!{
+                color: #ffffff;
+                animation-name: question-mark-inside-invert;
+                animation-duration: 0.8s;
+                animation-fill-mode: forwards;
+                animation-delay: 3s;
+            }}
                 />
-            </circle>
-            <path
-                fill="#676a6f"
-                d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM169.8 165.3c7.9-22.3 29.1-37.3 52.8-37.3h58.3c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24V250.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1H222.6c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
-            >
-                <animate
-                    attributeName="fill"
-                    to="#ffffff"
-                    dur="0.5s"
-                    fill="freeze"
-                    begin="3500ms"
+                <path
+                    ref={background_ref}
+                    {onclick}
+                    class={css!{
+                color: #676a6f;
+                animation-name: question-mark-background-invert;
+                animation-duration: 0.8s;
+                animation-fill-mode: forwards;
+                animation-delay: 3s;
+            }}
+                    fill="currentColor"
+                    d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM169.8 165.3c7.9-22.3 29.1-37.3 52.8-37.3h58.3c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24V250.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1H222.6c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
                 />
-            </path>
-            <circle fill="none" stroke="#676a6f" stroke-width="0" cx="256" cy="256" r="250">
-                <animate attributeName="stroke-width" to="5" dur="0.5s" fill="freeze" begin="3500ms" />
-            </circle>
-        </svg>
+                <circle
+                    ref={border_ref}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="20"
+                    cx="256"
+                    cy="256"
+                    r="246"
+                    class={css!{
+                    color: transparent;
+                    animation-name: question-mark-outer-stroke-appear;
+                    animation-duration: 0.8s;
+                    animation-fill-mode: forwards;
+                    animation-delay: 3s;
+                    }}
+                />
+            </svg>
+        </>
     }
 }
 
@@ -293,20 +368,10 @@ pub fn Tooltip(props: &Props) -> Html {
 
     let elapsed = use_raf(props.animation_duration, props.animation_start_time);
 
-    let question_mark = use_slice::<QuestionMarkState>();
-
-    // let timeout = {
-    //     let question_mark = question_mark.clone();
-    //     use_timeout(
-    //         move || {
-    //             question_mark.dispatch(QuestionMarkAction::StartFilling);
-    //         },
-    //         pr
-    //     )
-    // };
+    let question_mark = use_slice_value::<QuestionMarkState>();
 
     let before_hiding_params = use_mut_ref(|| None);
-    use_effect_with((*question_mark).clone(), {
+    use_effect_with(question_mark.clone(), {
         let before_hiding_params = before_hiding_params.clone();
         let node_ref = node_ref.clone();
         move |q| {
@@ -366,10 +431,15 @@ pub fn Tooltip(props: &Props) -> Html {
         v_height / 2.0,
     );
 
-    let mut svg_style = if elapsed <= 0.0 {
+    let mut svg_style = if elapsed <= 0.0 || question_mark.display_tooltips.is_some() {
+        let x_coeff = match question_mark.display_tooltips {
+            Some(true) => 1.0,
+            Some(false) => 0.9,
+            None => 1.0,
+        };
         let mut s = format!(
             "transform: translate({}%, {}%); position: absolute; ",
-            translate_x * 100.0,
+            translate_x * x_coeff * 100.0,
             translate_y * 100.0,
         );
         if let Some(bottom) = &props.static_bottom {
@@ -432,21 +502,24 @@ pub fn Tooltip(props: &Props) -> Html {
         }
     }
 
+    if elapsed == 1.0 && question_mark.display_tooltips.is_none() {
+        svg_style.push_str("display: none;");
+    }
+    let opacity = match question_mark.display_tooltips {
+        Some(true) => 1.0,
+        Some(false) => 0.0,
+        None => 1.0 - elapsed,
+    };
+    svg_style.push_str(&format!("opacity: {}; ", opacity));
+    if question_mark.display_tooltips.is_some() {
+        svg_style.push_str("transition: opacity 0.2s ease-out, transform 0.2s ease-out;");
+    }
+
     let ret = html! {
         <>
             <Global
                 css={css!{
-    "@keyframes tooltip-fade-in { 0% { opacity: 0; } }"
-            }}
-            />
-            <Global
-                css={css!{
-    "@keyframes tooltip-slide-in-left { 0% { transform: translate(90%, -50%); } }"
-            }}
-            />
-            <Global
-                css={css!{
-    "@keyframes tooltip-slide-in-right { 0% { transform: translate(-90%, -50%); } }"
+    "@keyframes tooltip-fade-in { 0% { opacity: 0; } } @keyframes tooltip-slide-in-left { 0% { transform: translate(90%, -50%); } } @keyframes tooltip-slide-in-right { 0% { transform: translate(-90%, -50%); } }"
             }}
             />
             <svg
@@ -454,7 +527,7 @@ pub fn Tooltip(props: &Props) -> Html {
                 class={props.classes.clone()}
                 ref={node_ref}
                 style={svg_style}
-                opacity={(1.0 - elapsed).to_string()}
+                // opacity={opacity.to_string()}
             >
                 <rect
                     x={if !props.mirror {tip_width.to_string()} else {0.0.to_string()}}
@@ -483,7 +556,7 @@ pub fn Tooltip(props: &Props) -> Html {
             </svg>
         </>
     };
-    if elapsed <= 0.0 {
+    if elapsed <= 0.0 || question_mark.display_tooltips.is_some() {
         ret
     } else {
         let document = web_sys::window().unwrap().document().unwrap();
