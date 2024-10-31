@@ -10,9 +10,10 @@ use stylist::yew::styled_component_impl;
 #[derive(Properties, PartialEq)]
 pub struct MockButtonProps {
     pub flavor: Flavor,
+    pub set_show: UseStateSetter<bool>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Flavor {
     Plus,
     Minus,
@@ -45,8 +46,18 @@ impl Flavor {
 #[function_component]
 pub fn MockButton(props: &MockButtonProps) -> Html {
     let aspect_ratio = props.flavor.view_box_width() / 512.0;
+    let onpointerenter = use_callback((), {
+        let set_show = props.set_show.clone();
+        move |_, _| set_show.set(true)
+    });
+    let onpointerleave = use_callback((), {
+        let set_show = props.set_show.clone();
+        move |_, _| set_show.set(false)
+    });
     html! {
         <div
+            onpointerenter={onpointerenter}
+            onpointerleave={onpointerleave}
             style={format!(r#"
                 border-radius: 20%;
                 border: 2px solid rgb(209,213,219);
@@ -71,6 +82,33 @@ const EDITOR_SIZE: &str = "min(80vw, 80vh)";
 
 fn button_size() -> String {
     format!("calc({} / 10)", EDITOR_SIZE)
+}
+
+#[derive(Properties, PartialEq)]
+pub struct TooltipedButtonProps {
+    pub flavor: Flavor,
+    pub text: AttrValue,
+    pub mirror: bool,
+}
+
+#[function_component]
+pub fn TooltipedButton(props: &TooltipedButtonProps) -> Html {
+    let show = use_state(|| false);
+
+    html! {
+        <div style="position: relative;">
+            <Tooltip
+                height={format!("calc({} * 0.8)", button_size())}
+                text={props.text.clone()}
+                static_top="50%"
+                static_right={(!props.mirror).then(|| "-15%")}
+                static_left={props.mirror.then(|| "-15%")}
+                mirror={props.mirror}
+                show={*show}
+            />
+            <MockButton flavor={props.flavor.clone()} set_show={show.setter()} />
+        </div>
+    }
 }
 
 #[cfg_attr(feature = "demo", styled_component_impl)]
@@ -98,57 +136,28 @@ pub fn App() -> Html {
                             <QuestionMark
                                 classes={css!{height: ${format!("calc({} * 0.7)", button_size())}; position: absolute; left: 50%; bottom: -4%; transform: translate(-50%, 100%);}}
                             />
-                            <div style="position: relative;">
-                                <Tooltip
-                                    height={format!("calc({} * 0.8)", button_size())}
-                                    text="Add"
-                                    static_top="50%"
-                                    static_right="-15%"
-                                />
-                                <MockButton flavor={Flavor::Plus} />
-                            </div>
-                            <div style="position: relative;">
-                                <Tooltip
-                                    height={format!("calc({} * 0.8)", button_size())}
-                                    text="Remove"
-                                    static_top="50%"
-                                    static_right="-15%"
-                                />
-                                <MockButton flavor={Flavor::Minus} />
-                            </div>
-                            <div style="position: relative;">
-                                <Tooltip
-                                    height={format!("calc({} * 0.8)", button_size())}
-                                    text="Connect"
-                                    static_top="50%"
-                                    static_right="-15%"
-                                />
-                                <MockButton flavor={Flavor::RightArrow} />
-                            </div>
-                            <div style="position: relative;">
-                                <Tooltip
-                                    height={format!("calc({} * 0.8)", button_size())}
-                                    text="Reset View"
-                                    static_top="50%"
-                                    static_right="-15%"
-                                />
-                                <MockButton flavor={Flavor::ResetView} />
-                            </div>
+                            <TooltipedButton flavor={Flavor::Plus} text="Add" mirror=false />
+                            <TooltipedButton flavor={Flavor::Minus} text="Remove" mirror=false />
+                            <TooltipedButton
+                                flavor={Flavor::RightArrow}
+                                text="Connect"
+                                mirror=false
+                            />
+                            <TooltipedButton
+                                flavor={Flavor::ResetView}
+                                text="Reset View"
+                                mirror=false
+                            />
                         </div>
                     </div>
                     <div
                         style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);"
                     >
-                        <div style="position: relative;">
-                            <Tooltip
-                                height={format!("calc({} * 0.8)", button_size())}
-                                text="Permissions"
-                                static_top="50%"
-                                static_left="-15%"
-                                mirror=true
-                            />
-                            <MockButton flavor={Flavor::Permissions} />
-                        </div>
+                        <TooltipedButton
+                            flavor={Flavor::Permissions}
+                            text="Permissions"
+                            mirror=true
+                        />
                     </div>
                 </div>
             </div>

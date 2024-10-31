@@ -157,7 +157,11 @@ pub struct QuestionMarkProps {
 #[function_component]
 pub fn QuestionMark(props: &QuestionMarkProps) -> Html {
     let waiting_for_initial_anim = use_state(|| true);
-    let cursor = if *waiting_for_initial_anim { "wait" } else { "pointer" };
+    let cursor = if *waiting_for_initial_anim {
+        "wait"
+    } else {
+        "pointer"
+    };
 
     let _timeout = use_timeout(
         {
@@ -278,6 +282,8 @@ pub fn QuestionMark(props: &QuestionMarkProps) -> Html {
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
+    #[prop_or_default]
+    pub show: bool,
     #[prop_or(500)]
     pub animation_duration: u32,
     #[prop_or(3000)]
@@ -393,12 +399,30 @@ pub fn Tooltip(props: &Props) -> Html {
         v_height / 2.0,
     );
 
-    let mut svg_style = if elapsed <= 0.0 || question_mark.display_tooltips.is_some() {
+    let mut svg_style = if elapsed <= 0.0 || elapsed == 1.0 {
         let x_coeff = match question_mark.display_tooltips {
             Some(true) => 1.0,
-            Some(false) => 0.9,
-            None => 1.0,
+            // Some(false) => 0.9,
+            Some(false) => {
+                if props.show {
+                    1.0
+                } else {
+                    0.9
+                }
+            }
+            None => {
+                if elapsed == 0.0 {
+                    1.0
+                } else {
+                    if props.show {
+                        1.0
+                    } else {
+                        0.9
+                    }
+                }
+            }
         };
+
         let mut s = format!(
             "transform: translate({}%, {}%); position: absolute; ",
             translate_x * x_coeff * 100.0,
@@ -455,7 +479,7 @@ pub fn Tooltip(props: &Props) -> Html {
     svg_style.push_str("height: ");
     svg_style.push_str(&height);
     svg_style.push_str("; ");
-    if elapsed == 0.0 || question_mark.display_tooltips.is_some() {
+    if elapsed == 0.0 || question_mark.display_tooltips.is_some() || props.show {
         svg_style.push_str("animation: tooltip-fade-in 0.2s ease-out, ");
         if !props.mirror {
             svg_style.push_str("tooltip-slide-in-left 0.2s ease-out;");
@@ -464,22 +488,38 @@ pub fn Tooltip(props: &Props) -> Html {
         }
     }
 
-    if elapsed == 1.0 && question_mark.display_tooltips.is_none() {
-        svg_style.push_str("display: none;");
-    }
+    // if elapsed == 1.0 && question_mark.display_tooltips.is_none() && !props.show {
+    //     svg_style.push_str("display: none;");
+    // }
+
     let opacity = match question_mark.display_tooltips {
         Some(true) => 1.0,
-        Some(false) => 0.0,
-        None => 1.0 - elapsed,
+        // Some(false) => 0.0,
+        Some(false) => {
+            if props.show {
+                1.0
+            } else {
+                0.0
+            }
+        }
+        None => {
+            if elapsed < 1.0 {
+                1.0 - elapsed
+            } else {
+                if props.show {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+        }
     };
     svg_style.push_str(&format!("opacity: {}; ", opacity));
+    svg_style.push_str("pointer-events: none;");
 
-    if question_mark.display_tooltips.is_some() {
+    // if question_mark.display_tooltips.is_some() || props.show {
+    if elapsed == 1.0 {
         svg_style.push_str("transition: opacity 0.2s ease-out, transform 0.2s ease-out;");
-
-        if !question_mark.display_tooltips.unwrap() {
-            svg_style.push_str("pointer-events: none;");
-        }
     }
 
     let ret = html! {
@@ -518,7 +558,7 @@ pub fn Tooltip(props: &Props) -> Html {
             </svg>
         </>
     };
-    if elapsed <= 0.0 || question_mark.display_tooltips.is_some() {
+    if elapsed <= 0.0 || elapsed == 1.0 {
         ret
     } else {
         let document = web_sys::window().unwrap().document().unwrap();
